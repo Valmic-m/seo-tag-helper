@@ -275,7 +275,7 @@ export class ReportGenerator {
           children: [
             new TextRun({ text: "Current Title ", bold: true }),
             new TextRun({ text: `(${page.title.length} chars): `, size: 18 }),
-            new TextRun({ text: page.title || "Missing", italic: !page.title })
+            new TextRun({ text: page.title || "Missing", italics: !page.title })
           ],
           spacing: { after: 50 }
         }),
@@ -294,7 +294,7 @@ export class ReportGenerator {
           children: [
             new TextRun({ text: "Current Description ", bold: true }),
             new TextRun({ text: `(${page.metaDescription.length} chars): `, size: 18 }),
-            new TextRun({ text: page.metaDescription || "Missing", italic: !page.metaDescription })
+            new TextRun({ text: page.metaDescription || "Missing", italics: !page.metaDescription })
           ],
           spacing: { after: 50 }
         }),
