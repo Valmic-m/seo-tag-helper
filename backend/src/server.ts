@@ -1,46 +1,87 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import slowDown from 'express-slow-down';
 import { InMemoryQueue } from './queue/InMemoryQueue';
 import { ReportGenerator } from './report/ReportGenerator';
 import { supabase } from './utils/supabase';
+import { InputValidator } from './utils/validation';
 import { StartScanRequest, StartScanResponse, ScanStatusResponse } from './types';
 
 const app = express();
 const queue = new InMemoryQueue();
 const reportGenerator = new ReportGenerator();
 
-// Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3001',
-  credentials: true
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Allow CORS for API
 }));
 
-app.use(express.json({ limit: '10mb' }));
+// CORS configuration
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3001',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// Simple rate limiting in memory
-const requestCounts = new Map<string, number[]>();
-const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000');
-  const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '20');
-  
-  const requests = requestCounts.get(ip) || [];
-  const recentRequests = requests.filter(time => now - time < windowMs);
-  
-  if (recentRequests.length >= maxRequests) {
-    return res.status(429).json({ 
-      error: 'Too many requests. Please try again later.',
-      retryAfter: Math.ceil(windowMs / 1000)
-    });
+// Input size limits
+app.use(express.json({ 
+  limit: '1mb',  // Reduced from 10mb for security
+  verify: (req, res, buf) => {
+    // Verify JSON structure
+    try {
+      JSON.parse(buf.toString());
+    } catch (err) {
+      throw new Error('Invalid JSON');
+    }
   }
-  
-  recentRequests.push(now);
-  requestCounts.set(ip, recentRequests);
-  next();
-};
+}));
 
-app.use(rateLimiter);
+// General rate limiting
+app.use(rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000'), // 1 minute
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'), // Increased for general use
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+// Slow down repeated requests
+app.use(slowDown({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  delayAfter: 5, // Allow 5 requests per windowMs without delay
+  delayMs: 500, // Add 500ms delay per request after delayAfter
+  maxDelayMs: 20000, // Maximum delay of 20 seconds
+}));
+
+// Stricter rate limiting for scan endpoints
+const scanRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit to 5 scans per 15 minutes per IP
+  message: {
+    error: 'Too many scan requests. Please wait before starting another scan.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Request logging
 app.use((req, res, next) => {
@@ -57,33 +98,30 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Start new scan
-app.post('/api/scan/start', async (req, res) => {
+// Start new scan (with stricter rate limiting)
+app.post('/api/scan/start', scanRateLimit, async (req, res) => {
   try {
     const { url, brandColors }: StartScanRequest = req.body;
     
-    // Validate URL
-    if (!url || typeof url !== 'string') {
-      return res.status(400).json({ error: 'URL is required' });
+    // Validate and sanitize URL
+    const urlValidation = InputValidator.validateUrl(url);
+    if (!urlValidation.isValid) {
+      return res.status(400).json({ error: urlValidation.error });
     }
     
-    let validatedUrl: URL;
-    try {
-      validatedUrl = new URL(url);
-      if (!['http:', 'https:'].includes(validatedUrl.protocol)) {
-        throw new Error('Invalid protocol');
-      }
-    } catch (error) {
-      return res.status(400).json({ error: 'Invalid URL format' });
+    // Validate and sanitize brand colors
+    const colorsValidation = InputValidator.validateBrandColors(brandColors);
+    if (!colorsValidation.isValid) {
+      return res.status(400).json({ error: colorsValidation.error });
     }
     
     // Create session in database
     const { data: session, error } = await supabase
       .from('scan_sessions')
       .insert({
-        url: validatedUrl.href,
+        url: urlValidation.sanitized,
         status: 'pending',
-        report_config: { brandColors: brandColors || {} }
+        report_config: { brandColors: colorsValidation.sanitized || {} }
       })
       .select()
       .single();
@@ -97,10 +135,10 @@ app.post('/api/scan/start', async (req, res) => {
     try {
       await queue.add({
         sessionId: session.id,
-        url: validatedUrl.href
+        url: urlValidation.sanitized
       });
       
-      console.log(`Scan started for ${validatedUrl.href} (session: ${session.id})`);
+      console.log(`Scan started for ${urlValidation.sanitized} (session: ${session.id})`);
       
       const response: StartScanResponse = {
         sessionId: session.id,
@@ -132,14 +170,16 @@ app.get('/api/scan/:id/status', async (req, res) => {
   try {
     const sessionId = req.params.id;
     
-    if (!sessionId) {
-      return res.status(400).json({ error: 'Session ID is required' });
+    // Validate session ID
+    const sessionValidation = InputValidator.validateSessionId(sessionId);
+    if (!sessionValidation.isValid) {
+      return res.status(400).json({ error: sessionValidation.error });
     }
     
     const { data, error } = await supabase
       .from('scan_sessions')
       .select('status, scan_data, url')
-      .eq('id', sessionId)
+      .eq('id', sessionValidation.sanitized)
       .single();
     
     if (error || !data) {
