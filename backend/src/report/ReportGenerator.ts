@@ -355,18 +355,34 @@ export class ReportGenerator {
           })
         );
         
-        pageImagesWithoutAlt.slice(0, 5).forEach((img: any, i: number) => {
+        // Show all images without alt text (with reasonable limit)
+        const maxImagesToShow = 20; // Increased from 5 to show more detail
+        const imagesToShow = pageImagesWithoutAlt.slice(0, maxImagesToShow);
+        
+        imagesToShow.forEach((img: any, i: number) => {
+          // Use enhanced image data if available, fallback to extracting from URL
+          const fileName = img.fileName || img.src.split('/').pop()?.split('?')[0] || 'Unknown';
+          const dimensions = img.width && img.height ? ` (${img.width}x${img.height})` : '';
+          
           elements.push(
             new Paragraph({
               children: [
                 new TextRun({ text: `  • Image ${i + 1}: `, bold: true }),
-                new TextRun({ text: "Missing alt text", color: "dc2626" })
+                new TextRun({ text: fileName + dimensions, size: 20 }),
+                new TextRun({ text: " - Missing alt text", color: "dc2626" })
               ],
               spacing: { after: 50 }
             }),
             new Paragraph({
               children: [
-                new TextRun({ text: "    Recommended: ", bold: true, color: "16a34a" }),
+                new TextRun({ text: "    URL: ", bold: true }),
+                new TextRun({ text: img.src.length > 80 ? img.src.substring(0, 80) + '...' : img.src, size: 18 })
+              ],
+              spacing: { after: 25 }
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: "    Recommended Alt Text: ", bold: true, color: "16a34a" }),
                 new TextRun({ text: img.recommendedAlt })
               ],
               spacing: { after: 100 }
@@ -374,10 +390,14 @@ export class ReportGenerator {
           );
         });
         
-        if (pageImagesWithoutAlt.length > 5) {
+        // Only show summary if there are more images than we're displaying
+        if (pageImagesWithoutAlt.length > maxImagesToShow) {
           elements.push(
             new Paragraph({
-              text: `    ... and ${pageImagesWithoutAlt.length - 5} more images`,
+              children: [
+                new TextRun({ text: `    ⚠️ Additional Images: `, bold: true, color: "ea580c" }),
+                new TextRun({ text: `${pageImagesWithoutAlt.length - maxImagesToShow} more images on this page also need alt text` })
+              ],
               spacing: { after: 150 }
             })
           );

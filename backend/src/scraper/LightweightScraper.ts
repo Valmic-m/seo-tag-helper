@@ -137,11 +137,19 @@ export class LightweightScraper {
         const h2s = Array.from(document.querySelectorAll('h2')).map(h => h.textContent?.trim() || '').filter(Boolean);
         const h3s = Array.from(document.querySelectorAll('h3')).map(h => h.textContent?.trim() || '').filter(Boolean);
         
-        // Extract images
-        const images = Array.from(document.querySelectorAll('img')).map(img => ({
-          src: img.src,
-          currentAlt: img.alt?.trim() || ''
-        })).filter(img => img.src && !img.src.startsWith('data:'));
+        // Extract images with enhanced information
+        const images = Array.from(document.querySelectorAll('img')).map(img => {
+          const src = img.src;
+          const fileName = src.split('/').pop()?.split('?')[0] || 'unknown';
+          return {
+            src: src,
+            currentAlt: img.alt?.trim() || '',
+            fileName: fileName,
+            width: img.width || null,
+            height: img.height || null,
+            title: img.title?.trim() || ''
+          };
+        }).filter(img => img.src && !img.src.startsWith('data:'));
         
         // Calculate word count from visible text
         const bodyText = document.body?.textContent || '';

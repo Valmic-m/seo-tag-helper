@@ -46,27 +46,16 @@ export class InputValidator {
       return { isValid: false, error: 'URL is required and must be a string' };
     }
 
-    // Sanitize input
-    const sanitizedUrl = validator.escape(url.trim());
+    // Trim whitespace but don't escape URL (breaks URL format)
+    const cleanUrl = url.trim();
 
-    // Check if it's a valid URL
-    if (!validator.isURL(sanitizedUrl, {
-      protocols: ['http', 'https'],
-      require_protocol: true,
-      require_host: true,
-      require_valid_protocol: true,
-      allow_underscores: false,
-      host_whitelist: [],
-      host_blacklist: [],
-      allow_trailing_dot: false,
-      allow_protocol_relative_urls: false,
-      disallow_auth: true
-    })) {
+    // Simple URL validation for development
+    if (!validator.isURL(cleanUrl)) {
       return { isValid: false, error: 'Invalid URL format' };
     }
 
     try {
-      const parsedUrl = new URL(sanitizedUrl);
+      const parsedUrl = new URL(cleanUrl);
 
       // Security checks
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {

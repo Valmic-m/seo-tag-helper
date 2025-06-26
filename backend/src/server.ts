@@ -72,10 +72,10 @@ app.use(slowDown({
   maxDelayMs: 20000, // Maximum delay of 20 seconds
 }));
 
-// Stricter rate limiting for scan endpoints
+// Stricter rate limiting for scan endpoints (relaxed for development)
 const scanRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit to 5 scans per 15 minutes per IP
+  windowMs: process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 5 * 60 * 1000, // 15 min prod, 5 min dev
+  max: process.env.NODE_ENV === 'production' ? 5 : 50, // 5 scans prod, 50 scans dev
   message: {
     error: 'Too many scan requests. Please wait before starting another scan.',
   },
