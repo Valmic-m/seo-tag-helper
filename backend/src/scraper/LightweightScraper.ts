@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer-core';
+import * as puppeteer from 'puppeteer-core';
 import { ScanData } from '../types';
 import { supabase } from '../utils/supabase';
 
@@ -16,7 +16,7 @@ export class LightweightScraper {
       
       // Launch browser with minimal resources
       this.browser = await puppeteer.launch({
-        headless: 'new',
+        headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -124,7 +124,7 @@ export class LightweightScraper {
       });
       
       // Wait a bit for dynamic content to load
-      await page.waitForTimeout(2000);
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Extract page data
       const pageData = await page.evaluate(() => {

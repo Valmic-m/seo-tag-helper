@@ -20,7 +20,7 @@ app.use(express.json({ limit: '10mb' }));
 // Simple rate limiting in memory
 const requestCounts = new Map<string, number[]>();
 const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
   const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000');
   const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '20');
@@ -149,7 +149,7 @@ app.get('/api/scan/:id/status', async (req, res) => {
     const scanData = data.scan_data || {};
     
     const response: ScanStatusResponse = {
-      status: data.status as any,
+      status: data.status as 'pending' | 'scanning' | 'completed' | 'failed',
       pagesProcessed: scanData.pagesProcessed || 0,
       totalPages: scanData.totalPages || scanData.pagesProcessed || 0,
       currentPage: scanData.currentPage,
