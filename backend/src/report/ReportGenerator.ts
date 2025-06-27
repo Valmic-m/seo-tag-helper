@@ -36,11 +36,11 @@ export class ReportGenerator {
         properties: {},
         children: [
           ...this.createCoverPage(session.url, brandColors),
-          ...this.createExecutiveSummary(scanData),
-          ...this.createKeyFindings(scanData),
-          ...this.createPageAnalysis(scanData.pages),
-          ...this.createImageAnalysis(scanData.pages),
-          ...this.createRecommendations(scanData),
+          ...this.createExecutiveSummary(scanData, brandColors),
+          ...this.createKeyFindings(scanData, brandColors),
+          ...this.createPageAnalysis(scanData.pages, brandColors),
+          ...this.createImageAnalysis(scanData.pages, brandColors),
+          ...this.createRecommendations(scanData, brandColors),
           ...this.createFooter()
         ]
       }]
@@ -66,11 +66,18 @@ export class ReportGenerator {
   
   private createCoverPage(url: string, brandColors?: BrandColors): Paragraph[] {
     const primaryColor = brandColors?.primary || '#2563eb';
+    const secondaryColor = brandColors?.secondary || '#7c3aed';
     
     return [
       new Paragraph({
-        text: "SEO Analysis Report",
-        heading: HeadingLevel.TITLE,
+        children: [
+          new TextRun({
+            text: "SEO Analysis Report",
+            bold: true,
+            size: 48,
+            color: primaryColor.replace('#', '')
+          })
+        ],
         alignment: AlignmentType.CENTER,
         spacing: { after: 400 }
       }),
@@ -80,7 +87,7 @@ export class ReportGenerator {
             text: url,
             bold: true,
             size: 28,
-            color: primaryColor.replace('#', '')
+            color: secondaryColor.replace('#', '')
           })
         ],
         alignment: AlignmentType.CENTER,
@@ -103,7 +110,11 @@ export class ReportGenerator {
     ];
   }
   
-  private createExecutiveSummary(scanData: ScanData): Paragraph[] {
+  private createExecutiveSummary(scanData: ScanData, brandColors?: BrandColors): Paragraph[] {
+    const primaryColor = brandColors?.primary || '#2563eb';
+    const secondaryColor = brandColors?.secondary || '#7c3aed';
+    const tertiaryColor = brandColors?.tertiary || '#059669';
+    
     const highPriorityCount = scanData.pages.filter(p => p.recommendations.priority === 'high').length;
     const mediumPriorityCount = scanData.pages.filter(p => p.recommendations.priority === 'medium').length;
     const imagesWithoutAlt = scanData.pages.reduce((count, page) => 
@@ -112,8 +123,14 @@ export class ReportGenerator {
     
     return [
       new Paragraph({
-        text: "Executive Summary",
-        heading: HeadingLevel.HEADING_1,
+        children: [
+          new TextRun({
+            text: "Executive Summary",
+            bold: true,
+            size: 32,
+            color: primaryColor.replace('#', '')
+          })
+        ],
         spacing: { before: 400, after: 200 }
       }),
       new Paragraph({
@@ -135,21 +152,25 @@ export class ReportGenerator {
       new Paragraph({
         children: [
           new TextRun({ text: "• High Priority Issues: ", bold: true }),
-          new TextRun({ text: highPriorityCount.toString(), color: "dc2626" })
+          new TextRun({ text: highPriorityCount.toString(), color: secondaryColor.replace('#', ''), bold: true })
         ],
         spacing: { after: 100 }
       }),
       new Paragraph({
         children: [
           new TextRun({ text: "• Medium Priority Issues: ", bold: true }),
-          new TextRun({ text: mediumPriorityCount.toString(), color: "ea580c" })
+          new TextRun({ text: mediumPriorityCount.toString(), color: tertiaryColor.replace('#', ''), bold: true })
         ],
         spacing: { after: 100 }
       }),
       new Paragraph({
         children: [
           new TextRun({ text: "• Images Missing Alt Text: ", bold: true }),
-          new TextRun({ text: imagesWithoutAlt.toString(), color: imagesWithoutAlt > 0 ? "dc2626" : "16a34a" })
+          new TextRun({ 
+            text: imagesWithoutAlt.toString(), 
+            color: imagesWithoutAlt > 0 ? secondaryColor.replace('#', '') : tertiaryColor.replace('#', ''),
+            bold: true 
+          })
         ],
         spacing: { after: 100 }
       }),
@@ -163,7 +184,7 @@ export class ReportGenerator {
     ];
   }
   
-  private createKeyFindings(scanData: ScanData): Paragraph[] {
+  private createKeyFindings(scanData: ScanData, brandColors?: BrandColors): Paragraph[] {
     const findings = [];
     
     // Calculate statistics
@@ -224,7 +245,7 @@ export class ReportGenerator {
     return findings;
   }
   
-  private createPageAnalysis(pages: any[]): Paragraph[] {
+  private createPageAnalysis(pages: any[], brandColors?: BrandColors): Paragraph[] {
     const elements: Paragraph[] = [
       new Paragraph({
         text: "Detailed Page Analysis",
@@ -325,7 +346,7 @@ export class ReportGenerator {
     return elements;
   }
   
-  private createImageAnalysis(pages: any[]): Paragraph[] {
+  private createImageAnalysis(pages: any[], brandColors?: BrandColors): Paragraph[] {
     const elements: Paragraph[] = [
       new Paragraph({
         text: "Image Optimization Analysis",
@@ -430,7 +451,7 @@ export class ReportGenerator {
     return elements;
   }
   
-  private createRecommendations(scanData: ScanData): Paragraph[] {
+  private createRecommendations(scanData: ScanData, brandColors?: BrandColors): Paragraph[] {
     return [
       new Paragraph({
         text: "Implementation Recommendations",

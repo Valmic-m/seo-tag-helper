@@ -17,6 +17,12 @@ const ScanResults: React.FC<ScanResultsProps> = ({
   onStartNewScan 
 }) => {
   const [selectedTab, setSelectedTab] = useState<'overview' | 'pages' | 'images'>('overview');
+  const [showBrandColors, setShowBrandColors] = useState(false);
+  const [brandColors, setBrandColors] = useState<BrandColors>({
+    primary: '#2563eb',
+    secondary: '#7c3aed', 
+    tertiary: '#059669'
+  });
 
   const highPriorityPages = scanData.pages.filter(p => p.recommendations.priority === 'high');
   const mediumPriorityPages = scanData.pages.filter(p => p.recommendations.priority === 'medium');
@@ -304,6 +310,117 @@ const ScanResults: React.FC<ScanResultsProps> = ({
           )}
         </div>
 
+        {/* Brand Customization */}
+        <div style={{ 
+          padding: '2rem',
+          borderTop: '1px solid #e5e7eb',
+          backgroundColor: '#f8f9fa'
+        }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              cursor: 'pointer'
+            }}>
+              <input
+                type="checkbox"
+                checked={showBrandColors}
+                onChange={(e) => setShowBrandColors(e.target.checked)}
+                style={{ marginRight: '0.5rem' }}
+              />
+              <span style={{ fontWeight: 'bold', color: '#374151' }}>
+                Customize Report Branding
+              </span>
+            </label>
+            <p style={{ 
+              margin: '0.5rem 0 0 1.5rem', 
+              fontSize: '0.875rem', 
+              color: '#6b7280' 
+            }}>
+              Customize the colors used in your SEO report
+            </p>
+          </div>
+
+          {showBrandColors && (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '1rem',
+              marginTop: '1rem'
+            }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem', 
+                  fontWeight: 'bold',
+                  color: '#374151'
+                }}>
+                  Primary Color
+                </label>
+                <input
+                  type="color"
+                  value={brandColors.primary}
+                  onChange={(e) => setBrandColors(prev => ({ ...prev, primary: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    height: '40px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem', 
+                  fontWeight: 'bold',
+                  color: '#374151'
+                }}>
+                  Secondary Color
+                </label>
+                <input
+                  type="color"
+                  value={brandColors.secondary}
+                  onChange={(e) => setBrandColors(prev => ({ ...prev, secondary: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    height: '40px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem', 
+                  fontWeight: 'bold',
+                  color: '#374151'
+                }}>
+                  Tertiary Color
+                </label>
+                <input
+                  type="color"
+                  value={brandColors.tertiary}
+                  onChange={(e) => setBrandColors(prev => ({ ...prev, tertiary: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    height: '40px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Actions */}
         <div style={{ 
           padding: '2rem',
@@ -314,7 +431,7 @@ const ScanResults: React.FC<ScanResultsProps> = ({
           flexWrap: 'wrap'
         }}>
           <button
-            onClick={() => onGenerateReport()}
+            onClick={() => onGenerateReport(showBrandColors ? brandColors : undefined)}
             disabled={isGeneratingReport}
             style={{
               flex: 1,
