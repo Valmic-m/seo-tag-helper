@@ -356,7 +356,7 @@ export class ReportGenerator {
         );
         
         // Show all images without alt text (with reasonable limit)
-        const maxImagesToShow = 20; // Increased from 5 to show more detail
+        const maxImagesToShow = 75; // Increased to 75 to show comprehensive detail
         const imagesToShow = pageImagesWithoutAlt.slice(0, maxImagesToShow);
         
         imagesToShow.forEach((img: any, i: number) => {
